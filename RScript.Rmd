@@ -1,0 +1,439 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This is the script for the complete replication of "Signaling Expertise through the Media? Measuring the Appearance of Corporations in Political News through a Complexity Lens" by Ellis Aizenberg and Moritz Müller. If using intellectual property from this file, please reference it accordingly.
+
+Paper, theory, and data by Ellis Aizenberg
+Code, method, and analysis by Moritz Müller
+
+# 1. Import and clean data (Data is not uploaded to Github, because files are large. Continue with #2 and load nws and complete_appearance data to run the script.)
+```{r}
+# Libraries
+library(dplyr)
+library(quanteda)
+library(stringr)
+sessionInfo()
+# 1. READABILITY AND COMPLEXITY MEASURES
+
+# Import data
+hsng = read.csv("data/communityandhousingUK.csv",
+                header = T,
+                stringsAsFactors = F) %>% mutate(field = "housing")
+edctn = read.csv("data/educationUK.csv",
+                 header = T,
+                 stringsAsFactors = F) %>% mutate(field = "education")
+enrgy = read.csv("data/energyUK.csv",
+                 header = T,
+                 stringsAsFactors = F) %>% mutate(field = "energy")
+envrnmt = read.csv("data/environmentUK.csv",
+                   header = T,
+                   stringsAsFactors = F) %>%  mutate(field = "environment")
+lw = read.csv("data/lawcrimeandfamilyissuesUK.csv",
+              header = T,
+              stringsAsFactors = F) %>% mutate(field = "justice")
+trnspt = read.csv("data/transportUK.csv",
+                  header = T,
+                  stringsAsFactors = F) %>% mutate(field = "transport")
+
+# Merge dataframe
+nws = rbind(hsng, edctn, enrgy, envrnmt, lw, trnspt)
+
+#empty global environment
+rm(hsng, edctn, enrgy, envrnmt, lw, trnspt)
+
+# Get corpus and dtm (only modification is lowercase)
+nws_corpus = corpus(nws[1:100,], docid_field = "id", text_field = "text")
+nws_dfm = dfm(nws$text, verbose = T, remove = stopwords(language = "en", source = "snowball"), remove_punct = T, remove_separators = T, remove_numbers = T, stem = T)
+nws_dfm = dfm_trim(nws_dfm, min_docfreq = 10, verbose = T) 
+
+# Calculate complexity
+#SKIP IF YOU DO NOT WANT TO WAIT AND CONTINUE ON LINE 113 AND LOAD NWS file. THE FOLLOWING LINES ARE BLANKED OUT SO IT DOES NOT RUN. IF IT IS SUPPOSED TO RUN, REMOVE HASHTAGS.
+# Edit: I chunked at least the readability score into parts of 10000 articles. That way I do not get an out of memory problem, because R kicks the finished 
+#       chunks out of the memory.
+
+# complexity1 = textstat_lexdiv(tokens(nws$text), measure = c("TTR","C","R","CTTR","U","S","Maas"))
+# 
+# readability1 = textstat_readability(nws$text[1:10000], measure = c("all"))
+# readability2 = textstat_readability(nws$text[10001:20000], measure = c("all"))
+# readability3 = textstat_readability(nws$text[20001:30000], measure = c("all"))
+# readability4 = textstat_readability(nws$text[30001:40000], measure = c("all"))
+# readability5 = textstat_readability(nws$text[40001:50000], measure = c("all"))
+# readability6 = textstat_readability(nws$text[50001:60000], measure = c("all"))
+# readability7 = textstat_readability(nws$text[60001:70000], measure = c("all"))
+# readability8 = textstat_readability(nws$text[70001:80000], measure = c("all"))
+# readability9 = textstat_readability(nws$text[80001:90000], measure = c("all"))
+# readability10 = textstat_readability(nws$text[90001:100000], measure = c("all"))
+# readability11 = textstat_readability(nws$text[100001:110000], measure = c("all"))
+# readability12 = textstat_readability(nws$text[110001:120000], measure = c("all"))
+# readability13 = textstat_readability(nws$text[120001:128433], measure = c("all"))
+# 
+# readability = rbind(
+#   readability1,
+#   readability2,
+#   readability3,
+#   readability4,
+#   readability5,
+#   readability6,
+#   readability7,
+#   readability8,
+#   readability9,
+#   readability10,
+#   readability11,
+#   readability12,
+#   readability13
+# )
+# 
+# #save(readability, file="data/readability")
+# 
+# # Merge
+# nws[,(ncol(nws)+1):(ncol(nws)+9)] = complexity1[,2:10]
+# nws[,(ncol(nws)+1):(ncol(nws)+48)] = readability[,2:49]
+# 
+# #empty workspace
+# rm(readability1,
+#    readability2,
+#    readability3,
+#    readability4,
+#    readability5,
+#    readability6,
+#    readability7,
+#    readability8,
+#    readability9,
+#    readability10,
+#    readability11,
+#    readability12,
+#    readability13, 
+#    complexity1, readability)
+
+# Save (and load if you come back later)
+#save(nws, file="data/nws")
+#write.csv(nws, file = "data/news_alldata.csv")
+
+load("data/nws")
+
+# 2. CODED NEWSPAPER APPEARANCES
+housing = read.csv(file="data/coded/resultsqueryhousing.csv", stringsAsFactors = F, header = T)
+housing$policy = "housing"
+housing$type=as.character(housing$type)
+
+education = read.csv(file="data/coded/resultsqueryeducation.csv", stringsAsFactors = F, header = T)
+education$policy = "education"
+education$type=as.character(education$type)
+
+
+energy = read.csv(file="data/coded/resultsqueryenergy.csv", stringsAsFactors = F, header = T)
+energy$policy = "energy"
+names(energy)[1]= "columnrow"
+energy = energy[energy$type!="",]
+
+environment = read.csv(file="data/coded/resultsqueryenvironment.csv", stringsAsFactors = F, header = T)
+environment$policy="environment"
+names(environment)[1] = "columnrow"
+environment$type=as.character(environment$type)
+
+
+lawcrimefamily = read.csv(file="data/coded/resultsquerylawcrimefamily.csv", stringsAsFactors = F, header = T)
+lawcrimefamily$policy="lawcrimefamily"
+
+transport = read.csv(file="data/coded/resultsquerytransport.csv", stringsAsFactors = F, header = T)
+transport$policy = "transport"
+names(transport)[1]= "columnrow"
+transport = transport[!is.na(transport$type),]
+
+# Add articles from energy category that were coded in a second wave
+energy_remaining= read.csv("data/lefttocode.csv",
+                           header = T,
+                           stringsAsFactors = F)
+energy_remaining$X = NULL
+energy_remaining$type = as.character(energy_remaining$type)
+
+
+coded = rbind(housing, education, environment, energy, lawcrimefamily, transport, energy_remaining)
+coded$type = str_replace_all(
+   coded$type,
+   c(
+      "ngo" = "1",
+      "business association" = "2",
+      "union" = "3",
+      "(professional)membership organization" = "4",
+      "corporation" = "5",
+      "GIA" = "6",
+      "research or think tank" = "7"
+   )
+)
+coded$type[coded$type=="(professional)membership organization"] = "4"
+coded$type[coded$type=="(profesional)membership organization"] = "4"
+
+#remove unnecessary files from environment
+rm(averages, counts, education, energy, environment, housing, lawcrimefamily, transport)
+
+#save new file
+#write.csv(coded, file="data/complete_coding.csv")
+#save(coded, file="data/complete_appearance")
+
+```
+
+# 2. Exploratory Analysis
+```{r}
+#Libraries
+library(dplyr)
+
+#Load data
+load("data/nws")
+
+#count per field
+counts = nws %>% 
+  group_by(field) %>% 
+  count(n())
+counts
+#Complexity and readibility
+averages = nws %>% 
+  group_by(field) %>% 
+  summarise_if(is.numeric, mean, na.rm = TRUE)
+averages
+```
+
+# 3. Data analysis
+```{r}
+#libraries
+library(tidyverse)
+library(betareg)
+library(ggeffects)
+library(ggplot2)
+library(stargazer)
+library(viridis)
+library(irr)
+#import necessary files (coded articles )
+load(file="data/complete_appearance")
+load(file="data/nws")
+new = coded[!is.na(coded$type),] 
+
+# get share of appearance per newspaper article
+shares = new %>% 
+  group_by(id, policy, type) %>% 
+  summarize(total=sum(count))
+
+shares = shares %>% 
+  group_by(id, policy) %>% 
+  mutate(total_sum=sum(total)) %>% 
+  group_by(type, policy) %>% 
+  mutate(share=total/total_sum) %>% 
+  ungroup
+
+shares = shares %>% 
+  group_by(id, policy) %>% 
+  summarize(ngo = if(any(type == 1)) share[type==1] else 0,
+            b_association = if(any(type == 2)) share[type==2] else 0,
+            union = if(any(type == 3)) share[type==3] else 0,
+            p_association = if(any(type == 4)) share[type==4] else 0,
+            corporation = if(any(type == 5)) share[type==5] else 0,
+            gia = if(any(type == 6)) share[type==6] else 0,
+            research = if(any(type == 7)) share[type==7] else 0)
+
+#combine with text complexity measures (and others) NOTE: I leave in duplicates articles that were sampled in multiple policy areas, 
+
+complexities = nws[!duplicated(nws$id),]
+complexities$field=NULL
+ledata=left_join(shares,complexities, by="id")            # ==> Go to 3b to calculate controls before  continuing, if nothing changed just load the completed file in next line
+library(vegan)
+
+# Create control variables
+# Density
+density = new %>% 
+  group_by(id, policy) %>% 
+  count(type) %>% 
+  summarize(density=n())
+
+ledata = left_join(ledata, density, by=c("id", "policy"))
+
+# Diversity
+diversity = new %>% 
+  group_by(id,policy) %>% 
+  count(type) %>% 
+  summarize(ngo = if(any(type == 1)) n[type==1] else 0,
+            b_association = if(any(type == 2)) n[type==2] else 0,
+            union = if(any(type == 3)) n[type==3] else 0,
+            p_association = if(any(type == 4)) n[type==4] else 0,
+            corporation = if(any(type == 5)) n[type==5] else 0,
+            gia = if(any(type == 6)) n[type==6] else 0,
+            research = if(any(type == 7)) n[type==7] else 0)
+diversity$shannon = diversity(diversity[3:9], index="shannon")
+
+ledata = left_join(ledata, diversity[,c(1,2,10)], by=c("id", "policy"))
+  
+# Mediasource
+unique(ledata$medium)
+ledata$medium[ledata$medium=="The Times (London)"|ledata$medium=="Th Times"|ledata$medium=="Times Newspapers Limited"] = "The Times"
+ledata$medium[ledata$medium=="Guardian.com."|ledata$medium=="Guardian.com"|ledata$medium=="The Guardian(London)"] = "The Guardian"
+
+# Year
+ledata$year = as.numeric(substr(ledata$date, 1, 4))
+
+# Save
+#save(ledata, file="data/ledata")
+#load(file="data/ledata")
+
+################################################################################################################
+#transform percentage because beta regressions do not accept 0s
+y.transf.betareg <- function(y){
+  n.obs <- sum(!is.na(y))
+  (y * (n.obs - 1) + 0.5) / n.obs
+}
+
+ledata$trns_corp = y.transf.betareg(ledata$corporation)
+ledata$trns_ngo = y.transf.betareg(ledata$ngo)
+
+
+######################################################################################################################
+# Final models 
+## CTTR + stakeholder
+model4 = betareg(trns_corp ~ CTTR + density + shannon,
+                 data = ledata[ledata$year>2011,])
+summary(model4)
+
+## CTTR + everything
+model5 = betareg(trns_corp ~ CTTR + density + shannon + medium + as.factor(policy),
+                 data = ledata[ledata$year>2011,])
+summary(model5)
+
+## Coleman-Liau + stakeholder
+model6 = betareg(trns_corp ~ Coleman.Liau.short + density + shannon,
+                 data = ledata[ledata$year>2011,])
+summary(model6)
+
+
+## Coleman.Liau.short + everything
+model7 = betareg(trns_corp ~ Coleman.Liau.short + density + shannon + medium + as.factor(policy),
+                 data = ledata[ledata$year>2011,])
+summary(model7)
+
+## All variables (using gam package to calculate confidence intervals for the paper. It is exactly the same regression model, but has less troubles with factors (which interfered with ggpredict))
+library(gam)
+library(mgcv)
+model8 = gam(trns_corp ~CTTR + Coleman.Liau.short + density + shannon + medium + policy,
+                 data = ledata[ledata$year>2011,], family=betar(link="logit"))
+
+summary(model8)
+
+
+#############################################################################################################################
+# Output for paper:
+#Output for of regression models (table 1, complete model8 values were replaced by regular betareg regression output instead of gamma regression for the table in the paper. Same values, but more uniform with the output from the other models. We only calculated the gamma regression because through a bug in the betareg library we could not properly caluclate confidence intervals for the plot function)
+stargazer(model4, model5, model6, model7, model8, title = "Results", align = T, type="html",out="new.htm")
+
+#marginal effects (CTTR AND READABILITY, figure 2)
+plot(ggpredict(model8, c("CTTR")))+ylab("share of corporations")+xlab("CTTR (text complexity)") + ggtitle("")
+plot(ggpredict(model8, c("Coleman.Liau.short")))+ylab("share of corporations")+xlab("Coleman-Liau index (readability)") + ggtitle("")
+
+
+
+### ROBUSTNESS CHECKS (appendix D)
+# Strategy here: Take 10 with the highest value and 10 with the lowest value and check if it aligns, first readability
+set.seed(1993)
+test = ledata[(ledata$Coleman.Liau.short>14) & (ledata$year>2011),]
+low_readability = test[sample(nrow(test),10),]
+test = ledata[(ledata$Coleman.Liau.short<7) & (ledata$year>2011),]
+high_readability = test[sample(nrow(test),10),]
+next_one = rbind(low_readability, high_readability)
+next_one = next_one[sample(nrow(next_one), 20),]
+#write.csv2(next_one, file="data/next_one.csv")
+
+# and now CTTR
+set.seed(1993)
+test = ledata[(ledata$CTTR>13) & (ledata$year>2011),]
+high_technicality = test[sample(nrow(test),10),]
+test = ledata[(ledata$CTTR<7) & (ledata$year>2011),]
+low_technicality = test[sample(nrow(test),10),]
+next_one_t = rbind(low_technicality, high_technicality)
+next_one_t= next_one_t[sample(nrow(next_one_t), 20),]
+#write.csv2(next_one_t, file="data/next_one_t.csv")
+
+### Evaluation (appendix D)
+coded_technicality = read.csv(file="data/final_coding_technicality.csv")
+coded_readability = read.csv(file="data/final_coding_readability.csv")
+
+kappa2(coded_technicality[,c("Moritz", "Score")], weight = "equal")
+kappa2(coded_technicality[,c("Moritz", "Ellis")], weight = "equal")
+kappa2(coded_technicality[,c("Ellis", "Score")], weight = "equal")
+kappa2(coded_readability[,c("Moritz", "Score")], weight = "equal")
+kappa2(coded_readability[,c("Moritz", "Ellis")], weight = "equal")
+kappa2(coded_readability[,c("Score", "Ellis")], weight = "equal")
+
+##summary statistics (appendix A)
+all_analysis_vars = ledata %>% 
+  select(corporation, CTTR, Coleman.Liau.short, density, shannon)%>%
+  psych::describe(quant=c(.25,.75)) %>%
+  as_tibble(rownames="rowname")  %>%
+  print()
+  
+#write.csv(all_analysis_vars, file="summary_stats.csv")
+
+#Appendix E: Models without controls for policy area
+## CTTR + everything
+model9 = betareg(trns_corp ~ CTTR + density + shannon + medium,
+                 data = ledata[ledata$year>2011,])
+summary(model9)
+
+## Coleman.Liau.short + everything
+model10 = betareg(trns_corp ~ Coleman.Liau.short + density + shannon + medium,
+                 data = ledata[ledata$year>2011,])
+summary(model10)
+
+```
+# R session info
+Here is the session info of the R library versions that were used to produce the outputs of the paper:
+
+R version 3.6.1 (2019-07-05)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19041)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_Germany.1252 
+[2] LC_CTYPE=English_Germany.1252   
+[3] LC_MONETARY=English_Germany.1252
+[4] LC_NUMERIC=C                    
+[5] LC_TIME=English_Germany.1252    
+
+attached base packages:
+[1] stats     graphics  grDevices utils    
+[5] datasets  methods   base     
+
+other attached packages:
+[1] stringr_1.4.0  quanteda_1.5.1 dplyr_0.8.3   
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.2         compiler_3.6.1    
+ [3] pillar_1.4.2       stopwords_1.0     
+ [5] tools_3.6.1        lubridate_1.7.4   
+ [7] tibble_2.1.3       nlme_3.1-140      
+ [9] gtable_0.3.0       lattice_0.20-38   
+[11] mgcv_1.8-31        pkgconfig_2.0.3   
+[13] rlang_0.4.0        psych_1.8.12      
+[15] fastmatch_1.1-0    Matrix_1.2-17     
+[17] rstudioapi_0.10    parallel_3.6.1    
+[19] xfun_0.10          knitr_1.25        
+[21] stats4_3.6.1       lmtest_0.9-37     
+[23] grid_3.6.1         nnet_7.3-12       
+[25] tidyselect_0.2.5   glue_1.3.1        
+[27] data.table_1.12.2  R6_2.4.0          
+[29] flexmix_2.3-15     foreign_0.8-71    
+[31] Formula_1.2-3      spacyr_1.2        
+[33] purrr_0.3.2        ggplot2_3.2.1     
+[35] magrittr_1.5       scales_1.0.0      
+[37] modeltools_0.2-22  splines_3.6.1     
+[39] mnormt_1.5-5       assertthat_0.2.1  
+[41] colorspace_1.4-1   betareg_3.1-2     
+[43] sandwich_2.5-1     stringi_1.4.3     
+[45] RcppParallel_4.4.3 lazyeval_0.2.2    
+[47] munsell_0.5.0      crayon_1.3.4      
+[49] zoo_1.8-6    
+
+
+
