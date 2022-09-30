@@ -1,0 +1,2 @@
+# TextComplexityAndBusinessAppearance
+Replication materials for "Signaling expertise through the media? Measuring the appearance of corporations in political news through a complexity lens" by Ellis Aizenberg and Moritz Müller: Ellis Aizenberg &amp; Moritz Müller (2021) Signaling expertise through the media? Measuring the appearance of corporations in political news through a complexity lens, Journal of European Public Policy, 28:11, 1770-1788, DOI: 10.1080/13501763.2020.1797144
