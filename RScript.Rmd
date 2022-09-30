@@ -11,7 +11,7 @@ This is the script for the complete replication of "Signaling Expertise through 
 Paper, theory, and data by Ellis Aizenberg
 Code, method, and analysis by Moritz Müller
 
-# 1. Import and clean data (Data is not uploaded to Github, because files are large. Continue with #2 and load nws and complete_appearance data to run the script.)
+# 1. Import and clean data (Data is not uploaded to Github, because files are large. Continue with #2 and load nws and complete_appearance data to run the script (download on the article website).
 ```{r}
 # Libraries
 library(dplyr)
